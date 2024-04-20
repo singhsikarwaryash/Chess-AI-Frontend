@@ -1,5 +1,6 @@
 import React from "react";
-import { Chessboard } from "react-chessboard";
+import {createComponent } from "@lit/react"
+import {GChessBoardElement} from "gchessboard"
 import { Chess } from "chess.js";
 import generateAIMove from "../Utility/MoveGenerator.js";
 import BoardStateManager from "../Utility/BoardStateManager.js";
@@ -14,7 +15,6 @@ export default class PlayArea extends React.Component {
       this.boardState = new BoardStateManager(board.fen())
       this.state = {
         board: board,
-        selectedSquare: null,
         side: Math.random() < 0.5 ? "white" : "black",
         dim: this.getDim(),
         selectedPromotion: "q",
@@ -23,12 +23,22 @@ export default class PlayArea extends React.Component {
       this.boardState = new BoardStateManager(props.fen, false)
       this.state = {
         board: new Chess(this.boardState.getCurrState()),
-        selectedSquare: null,
         side: props.fen.split("_")[5],
         dim: this.getDim(),
         selectedPromotion: "q",
       };
     }
+    this.GChessBoard = createComponent({
+      react: React,
+      tagName: "g-chess-board",
+      elementClass: GChessBoardElement,
+      events: {
+        onMoveStart: "movestart",
+        onMoveEnd: "moveend",
+        onMoveCancel: "movecancel",
+        onMoveFinished: "movefinished",
+      },
+    })
   }
 
   componentDidMount() {
@@ -43,121 +53,59 @@ export default class PlayArea extends React.Component {
       generateAIMove(board, this.boardState, this.setStateFromOtherModule);
     }
   }
-
-  handleSquareClick = (square) => {
-    const { board, selectedSquare, side } = this.state;
-    if (side[0] === board.turn()) {
-      console.log({
-        turni: board.turn(),
-        selectedi: selectedSquare,
-      });
-      if (selectedSquare) {
-        const piece = board.get(square);
-        if (
-          piece &&
-          board.moves({ square: square, verbose: false }).length > 0
-        ) {
-          //this.calculateHighlightedSquare(square);
-          this.setState(
-            {
-              selectedSquare: square,
-            },
-            () => {
-              //console.log("Selected square changed to " + this.state.selectedSquare);
-            }
-          );
-          return;
-        }
-        this.applyMove(square);
-      } else {
-        const piece = board.get(square);
-        if (
-          piece &&
-          board.moves({ square: square, verbose: false }).length > 0
-        ) {
-          // this.calculateHighlightedSquare(square);
-          this.setState(
-            {
-              selectedSquare: square,
-            },
-            () => {
-              //console.log("Square selected is " + this.state.selectedSquare);
-            }
-          );
-        }
-      }
-    } else {
-      console.log("Not your Turn");
-    }
+  handleMoveStart = (e) => {
+    e.detail.setTargets( 
+      this.state.board.moves({ square: e.detail.from, verbose: true }).map((m) => m.to)
+    )
+  }
+  handleSquareClick = (e) => {
+    this.detail = e.detail;
+    this.applyMove(e.detail);
+    console.log(e.detail);
   };
-  applyMove = (square, promote = null) => {
-    const { board, selectedSquare } = this.state;
+
+  applyMove = (detail, promote = null) => {
+    console.log(detail);
+    const {board} = this.state;
     if (
-      (parseInt(square[1]) === 1 || parseInt(square[1]) === 8) &&
-      board.get(selectedSquare).type === "p"
+      (parseInt(detail.to[1]) === 1 || parseInt(detail.to[1]) === 8) &&
+      detail.piece.pieceType === "pawn"
     ) {
       if (promote) {
         try {
           board.move({
-            from: selectedSquare,
-            to: square,
-            promotion: promote,
+            from: detail.from,
+            to: detail.to,
+            promotion: promote
           });
           this.boardState.push(board.fen())
           if (!board.isGameOver()) {
             generateAIMove(board, this.boardState, this.setStateFromOtherModule);
           }
         } catch (error) {}
-        // this.calculateHighlightedSquare(null);
         this.setState({
-          selectedSquare: null,
           selectedPromotion: promote,
         });
       } else {
-        this.square = square;
         this.setState({
-          selectedPromotion: "",
+          selectedPromotion: ""
         });
       }
     } else {
       try {
         board.move({
-          from: selectedSquare,
-          to: square,
+          from: detail.from,
+          to: detail.to,
         });
         this.boardState.push(board.fen())
+        this.setState({
+          board : board
+        })
         if (!board.isGameOver()) {
           generateAIMove(board, this.boardState, this.setStateFromOtherModule);
         }
       } catch (error) {
         console.log("Invalid move. Try again.");
-      }
-      // this.calculateHighlightedSquare(null);
-      this.setState({
-        selectedSquare: null,
-      });
-    }
-  };
-  calculateHighlightedSquare = (selectedSquare) => {
-    const { board } = this.state;
-    if (selectedSquare) {
-      this.highlightedSquares = [
-        selectedSquare,
-        ...board.moves({ square: selectedSquare, verbose: false }),
-      ];
-    } else {
-      if (board.inCheck()) {
-        const squares = board.squares;
-        for (let i = 0; i < squares.length; i++) {
-          const piece = board.get(squares[i]);
-          if (piece && piece.type === "k" && piece.color === board.turn()) {
-            this.highlightedSquares = [squares[i]];
-            break;
-          }
-        }
-        this.highlightedSquares = [];
-      } else {
-        this.highlightedSquares = [];
       }
     }
   };
@@ -209,14 +157,16 @@ export default class PlayArea extends React.Component {
               }
             } else {
               return (
-                <Chessboard
-                  position={board.fen()}
-                  onSquareClick={this.handleSquareClick}
-                  boardOrientation={side}
-                  boardWidth={dim}
-                  arePiecesDraggable={false}
-                  customSquare={"div"}
-                />
+                  <this.GChessBoard
+                    style = {{"width" : `${dim}px`, "height" : `${dim}px`}}
+                    id = "board"
+                    fen={board.fen()}
+                    interactive = {!board.isGameOver()}
+                    orientation = {side}
+                    turn = {board.turn()==="w"? "white":"black"}
+                    onMoveStart={this.handleMoveStart}
+                    onMoveEnd={this.handleSquareClick}>
+                </this.GChessBoard>
               );
             }
           })()}
@@ -224,7 +174,7 @@ export default class PlayArea extends React.Component {
         {selectedPromotion === "" && (
           <PawnPromotion
             dim={dim}
-            square={this.square}
+            detail={this.detail}
             applyMove={this.applyMove}
           />
         )}

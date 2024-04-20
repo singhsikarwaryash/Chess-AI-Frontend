@@ -3,7 +3,7 @@
     padding: 0;
 }
 .menu-container {
-    background-color: red;
+    background-color: #008080;
     display: flex;
     color: #fff;
     flex-direction: column;

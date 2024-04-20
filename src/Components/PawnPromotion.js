@@ -12,22 +12,22 @@ export default function PawnPromotion(props) {
         <div id = 'promotion-container' style={style}>
             <div id = 'promotion-seleciton'>
                 <div className="logo" onClick={() => {
-                    props.applyMove(props.square, 'b')
+                    props.applyMove(props.detail, 'b')
                 }}>
                     <img src= {bishop} alt="Bishop" />
                 </div>
                 <div className="logo" onClick={() => {
-                    props.applyMove(props.square, 'n')
+                    props.applyMove(props.detail, 'n')
                 }}>
                     <img src= {knight} alt="Knight" />
                 </div>
                 <div className="logo" onClick={() => {
-                    props.applyMove(props.square, 'q')
+                    props.applyMove(props.detail, 'q')
                 }}>
                     <img src= {queen} alt="Queen" />
                 </div>
                 <div className="logo" onClick={() => {
-                    props.applyMove(props.square, 'r')
+                    props.applyMove(props.detail, 'r')
                 }}>
                     <img src= {rook} alt="Rook" />
                 </div>
