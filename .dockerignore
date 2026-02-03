@@ -2,5 +2,5 @@ node_modules
 build
 .git
 .gitignore
-npm-debug.log
+npm-debug.log*
 .DS_Store
