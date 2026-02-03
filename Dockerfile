@@ -1,16 +1,21 @@
 # ---------- Build stage ----------
-FROM node:20-alpine AS build
+FROM node:18-alpine AS build
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+
+# Copy sources
+COPY package.json ./
 COPY . .
+
+# Install deps (ignore strict peer checks for older CRA stacks)
+RUN npm install --legacy-peer-deps --no-audit --no-fund \
+ && npm install ajv@6.12.6 ajv-keywords@3.5.2 --no-audit --no-fund
+
+# Build static files
 RUN npm run build
 
 # ---------- Runtime stage ----------
 FROM nginx:1.25-alpine
-# Copy built static files
 COPY --from=build /app/build /usr/share/nginx/html
-# Nginx config for SPA + health check
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
